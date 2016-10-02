@@ -25,8 +25,12 @@ for (int i = 0; i < stringsToEcho.size(); i++) {
 
 // Actually run the steps in parallel - parallel takes a map as an argument,
 // hence the above.
+stage 'state1'
 parallel stepsForParallel
 
+stage 'stage2'
+sleep 5
+echo 'stage2: OK'
 // Take the string and echo it.
 def transformIntoStep(inputString) {
     // We need to wrap what we return in a Groovy closure, or else it's invoked
@@ -37,7 +41,7 @@ def transformIntoStep(inputString) {
         node {
             echo inputString
 	    withEnv(["MYVAR=${inputString}"]) {
-	      sh 'echo target:${MYVAR} ${inputString}; sleep 100'
+	      sh 'echo target:${MYVAR} : ${inputString}; sleep 100'
 	    }
         }
     }
