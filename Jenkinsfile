@@ -4,7 +4,7 @@
 // parallel.
 
 // Our initial list of strings we want to echo in parallel
-def stringsToEcho = ["a", "b", "c", "d"]
+def stringsToEcho = ["a", "b", "c", "d", "e", "f", "j", "h", "i", "j"]
 
 // The map we'll store the parallel steps in before executing them.
 def stepsForParallel = [:]
@@ -35,8 +35,10 @@ def transformIntoStep(inputString) {
     // that explicitly, or use { -> } syntax.
     return {
         node {
-	    echo inputString
-	    sh 'echo target:$inputString ; sleep 100'
+            echo inputString
+	    withEnv(["MYVAR=inputString"]) {
+	      sh 'echo target:${MYVAR} ; sleep 10'
+	    }
         }
     }
 }
