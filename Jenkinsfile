@@ -36,8 +36,8 @@ def transformIntoStep(inputString) {
     return {
         node {
             echo inputString
-	    withEnv(["MYVAR=inputString"]) {
-	      sh 'echo target:${MYVAR} ; sleep 10'
+	    withEnv(["MYVAR=${inputString}"]) {
+	      sh 'echo target:${MYVAR} ${inputString}; sleep 100'
 	    }
         }
     }
