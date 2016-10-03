@@ -1,0 +1,6 @@
+version: !mux
+  jack-dax-v3:
+    linux_git_commit: v4.6-rc4-17-g55f058e
+    linux_patch_mbox: /tmp/jack-dax-v3.mbox
+    linux_config: /devel/xfstests-bld.git/kernel-configs/ext4-x86_64-config-4.7
+    linux_git_base_url: /devel/kernel/linux.git

@@ -1,0 +1,6 @@
+version: !mux
+  jack-dax-v3:
+    linux_git_commit: v4.6-rc4-17-g55f058e
+    linux_git_base_url: /src-mirror/kernel/linux.git
+    linux_patch_mbox: http://autotest.qa.sw.ru/pub/tmp1/jack-dax-v3.mbox
+    linux_config: http://autotest.qa.sw.ru/pub/tmp1/ext4-x86_64-config-4.7

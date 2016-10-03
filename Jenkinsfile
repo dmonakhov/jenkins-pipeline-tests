@@ -1,48 +1,62 @@
 #!groovie
-// While you can't use Groovy's .collect or similar methods currently, you can
-// still transform a list into a set of actual build steps to be executed in
-// parallel.
 
-// Our initial list of strings we want to echo in parallel
-def stringsToEcho = ["a", "b", "c", "d", "e", "f", "j", "h", "i", "j"]
 
-// The map we'll store the parallel steps in before executing them.
-def stepsForParallel = [:]
+node {
+     stage 'checkout test src'
+     checkout scm
+     
+     stage 'Fetch kernel'
+     try {
+     	  sh 'rm -rf artifacts avocado/job-results'
+          sh 'avjen avocado/linuxbuild2.py -m avocado/linuxbuild.py.data/v4.7.yaml'
+     	  stash includes: 'artifacts/*', name: 'build-ctx'
 
-// The standard 'for (String s: stringsToEcho)' syntax also doesn't work, so we
-// need to use old school 'for (int i = 0...)' style for loops.
-for (int i = 0; i < stringsToEcho.size(); i++) {
-    // Get the actual string here.
-    def s = stringsToEcho.get(i)
-
-    // Transform that into a step and add the step to the map as the value, with
-    // a name for the parallel step as the key. Here, we'll just use something
-    // like "echoing (string)"
-    def stepName = "echoing ${s}"
-    
-    stepsForParallel[stepName] = transformIntoStep(s)
+          stage 'Build kernel'
+	  sh 'find * -ls'
+	  // unstash 'build-ctx'
+          sh 'avjen avocado/linuxbuild3.py -m avocado/linuxbuild.py.data/v4.7.yaml'
+	  stash includes: 'artifacts/bzImage', name: 'bzImage'
+     } catch (error) {
+          echo "Failed, error: ${error}"
+	  sh 'find * -ls'
+          step([$class: 'JUnitResultArchiver', testResults: '**/results.xml'])
+          step([$class: 'ArtifactArchiver', artifacts: 'avocado/job-results/*/job.log', fingerprint: true])
+          throw error
+     }
 }
 
-// Actually run the steps in parallel - parallel takes a map as an argument,
-// hence the above.
-stage 'state1'
+stage 'Run test in parallel'
+
+//def test_list = ["generic/001", "generic/002", "generic/013", "ext4/300", "ext4/301", "ext4/302" ]
+def test_list = ["4k", "1k",  "ext3", "nojournal", "ext3conv", "metacsum", "dioread_nolock"]
+//def test_list = ["generic/001"]
+def stepsForParallel = [:]
+
+for (int i = 0; i < test_list.size(); i++) {
+    // Get the actual string here.
+    def t = test_list.get(i)
+    def stepName = "echoing ${t}"
+    
+    stepsForParallel[stepName] = transformIntoStep(t)
+}
+
 parallel stepsForParallel
 
-stage 'stage2'
-sleep 5
-echo 'stage2: OK'
-// Take the string and echo it.
-def transformIntoStep(inputString) {
-    // We need to wrap what we return in a Groovy closure, or else it's invoked
-    // when this method is called, not when we pass it to parallel.
-    // To do this, you need to wrap the code below in { }, and either return
-    // that explicitly, or use { -> } syntax.
+def transformIntoStep(test) {
     return {
         node {
-            echo inputString
-	    withEnv(["MYVAR=${inputString}"]) {
-	      sh 'echo target:${MYVAR} : ${inputString}; sleep 100'
+            echo test
+	    checkout scm
+	    unstash 'bzImage'
+
+	    sh ' cp artifacts/bzImage /devel/docker/vols/src-mirror/'
+	    withEnv(["CFG_NAME=${test}"]) {
+	      echo "Run test: ${test}"
+	      sh 'echo "CFG_NAME: ${CFG_NAME}" > test.yaml'
+	      sh 'dav-jen avocado/xfstests-bld.sh -m test.yaml || /bin/true'
 	    }
+            step([$class: 'JUnitResultArchiver', testResults: '**/results.xml'])
+	    step([$class: 'ArtifactArchiver', artifacts: 'avocado/job-results/*.tar.xz', fingerprint: true])
         }
     }
 }
